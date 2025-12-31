@@ -17,6 +17,10 @@ typedef struct {
     const char *ip_addr;
     const char *netmask;
     const char *gateway;
+    const char *dns_server1;
+    const char *dns_server2;
+    const char *hostname;
+    const char *search_domain;
 } rs485_netif_config_t;
 
 esp_err_t rs485_netif_init(rs485_netif_config_t *config);

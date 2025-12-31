@@ -105,6 +105,64 @@ Each node should have a unique IP in the 192.168.100.0/24 subnet:
 
 MAC addresses are auto-generated as: `12:34:56:78:00:XX` where XX is the node ID.
 
+### DNS Configuration
+
+Configure DNS server(s) and hostname for name resolution:
+
+```c
+rs485_netif_config_t netif_config = {
+    .node_id = NODE_ID,
+    .baud_rate = RS485_BAUD_RATE,
+    .uart_tx_pin = 17,
+    .uart_rx_pin = 18,
+    .uart_rts_pin = 19,
+    .ip_addr = "192.168.100.5",
+    .netmask = "255.255.255.0",
+    .gateway = "192.168.100.1",
+    .dns_server1 = "192.168.100.1",   // Primary DNS server
+    .dns_server2 = NULL,               // Optional secondary DNS
+    .hostname = "node5",              // This node's hostname
+    .search_domain = "rs485.local"    // DNS search domain
+};
+```
+
+**DNS Configuration Options:**
+
+1. **Single DNS server**: Use `dns_server1` only
+2. **Primary + Secondary DNS**: Set both `dns_server1` and `dns_server2` for failover
+3. **Search domain**: Set `search_domain` to enable short hostname resolution (e.g., `node10` → `node10.rs485.local`)
+4. **Hostname**: Set this node's hostname (used for DHCP/DNS identification)
+
+**DNS Resolution Examples:**
+
+```c
+// Full hostname (always works)
+rs485_ping_test("node10.rs485.local", 4);
+
+// Short hostname (requires search_domain)
+rs485_ping_test("node10", 4);  // Resolves as "node10.rs485.local"
+
+// IP address (bypasses DNS)
+rs485_ping_test("192.168.100.10", 4);
+
+// Programmatic DNS lookup
+#include "lwip/netdb.h"
+
+struct addrinfo hints = {0};
+hints.ai_family = AF_INET;
+hints.ai_socktype = SOCK_STREAM;
+
+struct addrinfo *res;
+int err = getaddrinfo("node10.rs485.local", "80", &hints, &res);
+if (err == 0) {
+    struct sockaddr_in *addr = (struct sockaddr_in *)res->ai_addr;
+    printf("Resolved to: %s\n", inet_ntoa(addr->sin_addr));
+    freeaddrinfo(res);
+}
+```
+
+**Note**: DNS server configuration is global (not per-interface). If using multiple network interfaces, configure DNS carefully to avoid conflicts.
+
 ## Example Applications
 
 ### Ping Test
@@ -223,6 +281,13 @@ esp_err_t rs485_frame_parse(const uint8_t *frame, size_t len,
 void csma_cd_init(csma_context_t *ctx);
 esp_err_t csma_cd_transmit(rs485_phy_t *phy, const uint8_t *frame, size_t len, csma_context_t *ctx);
 void csma_cd_print_stats(const csma_context_t *ctx);
+```
+
+### DNS Resolution
+
+```c
+esp_err_t rs485_dns_lookup_example(const char *hostname);
+esp_err_t rs485_dns_get_server_info(void);
 ```
 
 ## License

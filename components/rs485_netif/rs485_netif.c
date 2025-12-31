@@ -3,6 +3,7 @@
 #include "esp_log.h"
 #include "lwip/err.h"
 #include "lwip/sockets.h"
+#include "lwip/dns.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -144,7 +145,33 @@ esp_err_t rs485_netif_init(rs485_netif_config_t *config)
         ESP_LOGE(TAG, "Failed to set IP info: %d", ret);
         return ret;
     }
-
+    
+    if (config->hostname != NULL) {
+        esp_netif_set_hostname(s_rs485_netif, config->hostname);
+        ESP_LOGI(TAG, "Hostname: %s", config->hostname);
+    }
+    
+    if (config->dns_server1 != NULL) {
+        ip_addr_t dns_addr;
+        ip4addr_aton(config->dns_server1, &dns_addr.u_addr.ip4);
+        dns_addr.type = IPADDR_TYPE_V4;
+        dns_setserver(0, &dns_addr);
+        ESP_LOGI(TAG, "DNS server 1: %s", config->dns_server1);
+    }
+    
+    if (config->dns_server2 != NULL) {
+        ip_addr_t dns_addr;
+        ip4addr_aton(config->dns_server2, &dns_addr.u_addr.ip4);
+        dns_addr.type = IPADDR_TYPE_V4;
+        dns_setserver(1, &dns_addr);
+        ESP_LOGI(TAG, "DNS server 2: %s", config->dns_server2);
+    }
+    
+    if (config->search_domain != NULL) {
+        dns_setsearch(config->search_domain);
+        ESP_LOGI(TAG, "DNS search domain: %s", config->search_domain);
+    }
+    
     ret = esp_netif_action_start(s_rs485_netif, NULL, 0, NULL);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start netif: %d", ret);

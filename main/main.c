@@ -7,6 +7,7 @@
 #include "rs485_ping.h"
 #include "rs485_tcp_server.h"
 #include "rs485_udp_broadcast.h"
+#include "rs485_dns_example.h"
 
 static const char *TAG = "TCP485";
 
@@ -32,21 +33,38 @@ void app_main(void)
         .uart_rts_pin = 19,
         .ip_addr = "192.168.100.5",
         .netmask = "255.255.255.0",
-        .gateway = "192.168.100.1"
+        .gateway = "192.168.100.1",
+        .dns_server1 = "192.168.100.1",
+        .dns_server2 = NULL,
+        .hostname = "node5",
+        .search_domain = "rs485.local"
     };
-
+    
     ESP_ERROR_CHECK(rs485_netif_init(&netif_config));
     ESP_LOGI(TAG, "RS485 network interface initialized");
-    ESP_LOGI(TAG, "IP: %s, MAC: 12:34:56:78:00:%02X", netif_config.ip_addr, NODE_ID);
-
+    ESP_LOGI(TAG, "IP: %s, Hostname: %s, MAC: 12:34:56:78:00:%02X", 
+             netif_config.ip_addr, netif_config.hostname, NODE_ID);
+    
     vTaskDelay(pdMS_TO_TICKS(2000));
-
+    
+    ESP_LOGI(TAG, "DNS Resolution Examples:");
+    
+    rs485_dns_get_server_info();
+    
+    rs485_dns_lookup_example("node10.rs485.local");
+    
+    rs485_dns_lookup_example("node10");
+    
+    rs485_ping_test("node10.rs485.local", 4);
+    
+    rs485_ping_test("node10", 4);
+    
     rs485_ping_test("192.168.100.10", 4);
-
+    
     rs485_tcp_server_start(5000);
-
+    
     rs485_udp_broadcast_start(5000);
-
+    
     while (1) {
         rs485_netif_print_stats();
         vTaskDelay(pdMS_TO_TICKS(5000));
