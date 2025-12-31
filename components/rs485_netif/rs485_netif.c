@@ -4,6 +4,7 @@
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
+#include "esp_dhcp.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
@@ -170,6 +171,30 @@ esp_err_t rs485_netif_init(rs485_netif_config_t *config)
     if (config->search_domain != NULL) {
         dns_setsearch(config->search_domain);
         ESP_LOGI(TAG, "DNS search domain: %s", config->search_domain);
+    }
+    
+    if (config->use_dhcp) {
+        ESP_LOGI(TAG, "Starting DHCP client...");
+        
+        esp_dhcpc_config_t dhcpc_config = {
+            .dhcps = NULL,
+            .dhcpc = {
+                .start_ip = NULL,
+                .stop_ip = NULL,
+                .timer_period = 5,
+                .hostname = config->hostname,
+                .hostname_len = (config->hostname != NULL) ? strlen(config->hostname) : 0,
+                .try_gw_probing = false,
+            }
+        };
+        
+        esp_err_t dhcp_ret = esp_dhcpc_start(&dhcpc_config);
+        if (dhcp_ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to start DHCP client: %d", dhcp_ret);
+            return dhcp_ret;
+        }
+        
+        ESP_LOGI(TAG, "DHCP client started, waiting for IP assignment...");
     }
     
     ret = esp_netif_action_start(s_rs485_netif, NULL, 0, NULL);

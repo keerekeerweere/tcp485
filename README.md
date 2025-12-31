@@ -165,6 +165,17 @@ if (err == 0) {
 
 ## Example Applications
 
+### DHCP Client Example
+
+See `examples/dhcp_client/` for complete DHCP client implementation and configuration.
+
+### DNS Resolution
+
+```c
+esp_err_t rs485_dns_lookup_example(const char *hostname);
+esp_err_t rs485_dns_get_server_info(void);
+```
+
 ### Ping Test
 
 ```c

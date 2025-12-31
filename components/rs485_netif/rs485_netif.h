@@ -17,9 +17,10 @@ typedef struct {
     const char *ip_addr;
     const char *netmask;
     const char *gateway;
+    bool use_dhcp;
+    const char *hostname;
     const char *dns_server1;
     const char *dns_server2;
-    const char *hostname;
     const char *search_domain;
 } rs485_netif_config_t;
 
