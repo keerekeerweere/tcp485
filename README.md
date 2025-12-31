@@ -1,5 +1,44 @@
 # TCP/IP over RS485 with Custom MAC Layer
 
+> **DISCLAIMER**: This code is AI-generated and has NOT been tested on hardware. It is provided as a thought experiment and reference implementation only. Use at your own risk. This code may contain errors, bugs, or incomplete functionality.
+
+**Feedback & Improvements Are Welcome!**
+This is an experimental implementation intended as a reference. If you encounter issues, find bugs, or have suggestions for improvements, please provide feedback. Bug reports, security fixes, and enhancements are encouraged. You are free to modify, patch, or improve any part of this code.
+
+**Security Considerations**
+- This implementation has NOT undergone security review or penetration testing
+- RS485 is a shared medium - consider network segmentation if used in sensitive environments
+- Custom MAC protocol has NOT been audited for vulnerabilities
+- Review and harden the implementation before production use
+- Use appropriate authentication and encryption for sensitive data
+
+**Testing Recommendations**
+- Start with small-scale testing (2-3 nodes) before deploying full 32-node network
+- Verify proper RS485 termination (120Ω resistors at both ends)
+- Monitor collision rates and adjust CSMA/CD parameters as needed
+- Test DHCP client behavior with various server configurations
+- Verify DNS resolution works correctly with your DHCP server
+
+**Resources for Improvement**
+- [ESP-IDF Documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/lwip.html)
+- [lwIP Documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/lwip.html)
+- [ESP-NETIF Programming Manual](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/network/esp_netif_programming.html)
+- [ESP-IDF Examples](https://github.com/espressif/esp-idf/tree/master/examples)
+
+**Known Limitations**
+- DHCP server not implemented (client-side only)
+- No DHCP relay/switch support (server-side would need this)
+- No dynamic lease table management (client relies on server)
+- Single network interface support (no multi-interface DNS per interface)
+- Limited to RS485 physical layer constraints (19200 baud)
+
+**License**
+Apache 2.0
+
+---
+
+Complete implementation of a TCP/IP stack over RS485 using a custom MAC layer with CSMA/CD collision detection. Compatible with ESP32/ESP32-S3 and ESP-IDF.
+
 Complete implementation of a TCP/IP stack over RS485 using a custom MAC layer with CSMA/CD collision detection. Compatible with ESP32/ESP32-S3 and ESP-IDF.
 
 ## Architecture
