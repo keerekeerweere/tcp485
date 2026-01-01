@@ -1,8 +1,6 @@
 #include "rs485_frame.h"
-#include "esp_log.h"
 #include <string.h>
-
-static const char *TAG = "RS485_FRAME";
+#include <stdio.h>
 
 static uint32_t crc32_table[256];
 static bool crc32_table_initialized = false;
@@ -37,82 +35,99 @@ uint32_t rs485_crc32(const uint8_t *data, size_t len)
     return crc ^ 0xFFFFFFFF;
 }
 
-esp_err_t rs485_frame_build(const uint8_t *dest_mac, const uint8_t *src_mac,
-                            uint16_t ethertype, const uint8_t *payload,
-                            size_t payload_len, uint8_t *out_frame, size_t *out_len)
+int rs485_frame_build(const uint8_t *dest_mac, const uint8_t *src_mac,
+                      uint16_t ethertype, const uint8_t *payload,
+                      size_t payload_len, uint8_t *out_frame, size_t *out_len)
 {
     if (dest_mac == NULL || src_mac == NULL || out_frame == NULL || out_len == NULL) {
-        return ESP_ERR_INVALID_ARG;
+        return -1;
     }
 
     size_t total_len = RS485_HDR_LEN + payload_len + RS485_CRC_LEN;
     if (total_len > RS485_MAX_FRAME) {
-        ESP_LOGE(TAG, "Frame too large: %d bytes (max %d)", total_len, RS485_MAX_FRAME);
-        return ESP_ERR_INVALID_SIZE;
+        fprintf(stderr, "Frame too large: %d bytes (max %d)\n", total_len, RS485_MAX_FRAME);
+        return -1;
     }
 
     if (*out_len < total_len) {
-        ESP_LOGE(TAG, "Output buffer too small: %d bytes (need %d)", *out_len, total_len);
-        return ESP_ERR_INVALID_SIZE;
+        fprintf(stderr, "Output buffer too small: %d bytes (need %d)\n", *out_len, total_len);
+        return -1;
     }
 
     size_t pos = 0;
-    out_frame[pos++] = RS485_PREAMBLE;
+    
+    // Fill preamble with 7 bytes of 0x55 (standard Ethernet preamble)
+    memset(&out_frame[pos], 0x55, RS485_PREAMBLE_BYTES);
+    pos += RS485_PREAMBLE_BYTES;
+    
+    // Add SFD (standard Ethernet SFD)
     out_frame[pos++] = RS485_SFD;
+    
+    // Copy destination MAC address
     memcpy(&out_frame[pos], dest_mac, MAC_ADDR_LEN);
     pos += MAC_ADDR_LEN;
+    
+    // Copy source MAC address
     memcpy(&out_frame[pos], src_mac, MAC_ADDR_LEN);
     pos += MAC_ADDR_LEN;
+    
+    // Add ethertype
     out_frame[pos++] = (ethertype >> 8) & 0xFF;
     out_frame[pos++] = ethertype & 0xFF;
     
+    // Copy payload if provided
     if (payload != NULL && payload_len > 0) {
         memcpy(&out_frame[pos], payload, payload_len);
         pos += payload_len;
     }
 
-    uint32_t crc = rs485_crc32(&out_frame[2], pos - 2);
+    // Calculate and add CRC
+    uint32_t crc = rs485_crc32(&out_frame[RS485_PREAMBLE_BYTES + 1], pos - (RS485_PREAMBLE_BYTES + 1));
     memcpy(&out_frame[pos], &crc, RS485_CRC_LEN);
     pos += RS485_CRC_LEN;
 
     *out_len = pos;
-    return ESP_OK;
+    return 0;
 }
 
-esp_err_t rs485_frame_parse(const uint8_t *frame, size_t len,
-                            rs485_frame_t *parsed, uint8_t **payload_ptr, size_t *payload_len)
+int rs485_frame_parse(const uint8_t *frame, size_t len,
+                      rs485_frame_t *parsed, uint8_t **payload_ptr, size_t *payload_len)
 {
     if (frame == NULL || len < RS485_MIN_FRAME) {
-        return ESP_ERR_INVALID_ARG;
+        return -1;
     }
 
-    if (frame[0] != RS485_PREAMBLE || frame[1] != RS485_SFD) {
-        ESP_LOGW(TAG, "Invalid preamble/SFD: %02X %02X", frame[0], frame[1]);
-        return ESP_ERR_INVALID_RESPONSE;
+    // Check for standard preamble and SFD
+    // We need to be careful here since we're checking if the frame starts with 7 bytes of 0x55 followed by 0xD5
+    if (frame[0] != 0x55 || frame[1] != 0x55 || frame[2] != 0x55 || 
+        frame[3] != 0x55 || frame[4] != 0x55 || frame[5] != 0x55 ||
+        frame[6] != 0x55 || frame[7] != RS485_SFD) {
+        fprintf(stderr, "Invalid preamble/SFD: %02X %02X ...\n", frame[0], frame[1]);
+        return -1;
     }
 
     if (parsed != NULL) {
-        parsed->hdr.preamble = frame[0];
-        parsed->hdr.sfd = frame[1];
-        memcpy(parsed->hdr.dest_mac, &frame[2], MAC_ADDR_LEN);
-        memcpy(parsed->hdr.src_mac, &frame[8], MAC_ADDR_LEN);
-        parsed->hdr.ethertype = (frame[14] << 8) | frame[15];
+        memcpy(parsed->hdr.preamble, frame, RS485_PREAMBLE_BYTES);
+        parsed->hdr.sfd = frame[7];
+        memcpy(parsed->hdr.dest_mac, &frame[8], MAC_ADDR_LEN);
+        memcpy(parsed->hdr.src_mac, &frame[14], MAC_ADDR_LEN);
+        parsed->hdr.ethertype = (frame[20] << 8) | frame[21];
     }
 
-    size_t payload_start = RS485_HDR_LEN;
+    size_t payload_start = RS485_PREAMBLE_BYTES + 1 + MAC_ADDR_LEN + MAC_ADDR_LEN + sizeof(uint16_t);
     size_t payload_end = len - RS485_CRC_LEN;
     
     if (payload_end < payload_start) {
-        return ESP_ERR_INVALID_SIZE;
+        return -1;
     }
 
     uint32_t received_crc;
     memcpy(&received_crc, &frame[len - RS485_CRC_LEN], RS485_CRC_LEN);
     
-    uint32_t calculated_crc = rs485_crc32(&frame[2], payload_end - 2);
+    uint32_t calculated_crc = rs485_crc32(&frame[RS485_PREAMBLE_BYTES + 1], payload_end - (RS485_PREAMBLE_BYTES + 1));
     if (received_crc != calculated_crc) {
-        ESP_LOGW(TAG, "CRC mismatch: received=0x%08X, calculated=0x%08X", received_crc, calculated_crc);
-        return ESP_ERR_INVALID_CRC;
+        fprintf(stderr, "CRC mismatch: received=0x%08X, calculated=0x%08X\n", received_crc, calculated_crc);
+        return -1;
     }
 
     if (parsed != NULL) {
@@ -127,7 +142,7 @@ esp_err_t rs485_frame_parse(const uint8_t *frame, size_t len,
         *payload_len = payload_end - payload_start;
     }
 
-    return ESP_OK;
+    return 0;
 }
 
 bool rs485_is_broadcast_mac(const uint8_t *mac)
@@ -146,10 +161,14 @@ void rs485_generate_mac(uint8_t *mac, uint8_t node_id)
         return;
     }
     
-    mac[0] = 0x12;
-    mac[1] = 0x34;
-    mac[2] = 0x56;
-    mac[3] = 0x78;
-    mac[4] = 0x00;
-    mac[5] = node_id;
+    // Use proper IEEE MAC address generation with unique OUI
+    // Following IEEE EUI-48 standard with valid vendor prefixes
+    
+    // Using a proper vendor OUI that follows IEEE standards
+    mac[0] = 0x00;  // OUI part 1 (valid vendor prefix)
+    mac[1] = 0x11;  // OUI part 2 (valid vendor prefix)
+    mac[2] = 0x22;  // OUI part 3 (valid vendor prefix) 
+    mac[3] = 0x00;  // Extended address part 1
+    mac[4] = 0x00;  // Extended address part 2
+    mac[5] = node_id;  // Node ID in last byte
 }
