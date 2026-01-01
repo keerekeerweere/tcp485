@@ -64,7 +64,6 @@ struct rs485_phy {
 
 typedef struct rs485_phy rs485_phy_t;
 
-void rs485_calculate_timing(uint32_t baud_rate, uint32_t distance_m, rs485_timing_t *timing);
 void rs485_apply_timing(const rs485_timing_t *timing);
 
 esp_err_t rs485_phy_init(rs485_phy_t *phy);

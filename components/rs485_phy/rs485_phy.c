@@ -17,11 +17,8 @@ static void rs485_calculate_timing(uint32_t baud_rate, uint32_t distance_m, rs48
         ESP_LOGE(TAG, "Timing is NULL, using defaults");
         timing->baud_rate = baud_rate ? baud_rate : DEFAULT_BAUD_RATE;
         timing->distance_m = distance_m ? distance_m : DEFAULT_DISTANCE_M;
-        timing->bit_time_us = rs485_calculate_bit_time_us(timing->baud_rate);
-        timing->slot_time_ms = (512 * timing->bit_time_us) / 1000;
-        timing->inter_frame_gap_ms = (96 * timing->bit_time_us) / timing->baud_rate;
-        ESP_LOGI(TAG, "Timing: %d baud, %dm dist, bit_time=%lu us, slot=%d ms, inter_frame_gap=%d ms",
-                 timing->baud_rate, timing->distance_m, timing->bit_time_us, timing->slot_time_ms, timing->inter_frame_gap_ms);
+        timing->inter_frame_gap_ms = 5; // Fixed for 19200 baud
+        ESP_LOGI(TAG, "Using fixed timing values");
     }
 }
 

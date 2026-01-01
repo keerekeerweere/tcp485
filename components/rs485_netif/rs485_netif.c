@@ -174,27 +174,11 @@ esp_err_t rs485_netif_init(rs485_netif_config_t *config)
     }
     
     if (config->use_dhcp) {
-        ESP_LOGI(TAG, "Starting DHCP client...");
-        
-        esp_dhcpc_config_t dhcpc_config = {
-            .dhcps = NULL,
-            .dhcpc = {
-                .start_ip = NULL,
-                .stop_ip = NULL,
-                .timer_period = 5,
-                .hostname = config->hostname,
-                .hostname_len = (config->hostname != NULL) ? strlen(config->hostname) : 0,
-                .try_gw_probing = false,
-            }
-        };
-        
-        esp_err_t dhcp_ret = esp_dhcpc_start(&dhcpc_config);
-        if (dhcp_ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to start DHCP client: %d", dhcp_ret);
-            return dhcp_ret;
-        }
-        
-        ESP_LOGI(TAG, "DHCP client started, waiting for IP assignment...");
+        ESP_LOGW(TAG, "DHCP client temporarily disabled - requires ESP-IDF v5.5.2 API migration");
+        ESP_LOGW(TAG, "Using static IP configuration instead");
+        // TODO: Implement ESP-IDF v5.5.2 compatible DHCP client
+        // The esp_dhcpc_start() API has changed significantly
+        return ESP_ERR_NOT_SUPPORTED;
     }
     
     ret = esp_netif_action_start(s_rs485_netif, NULL, 0, NULL);
