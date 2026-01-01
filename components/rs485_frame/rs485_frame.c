@@ -126,7 +126,7 @@ int rs485_frame_parse(const uint8_t *frame, size_t len,
     
     uint32_t calculated_crc = rs485_crc32(&frame[RS485_PREAMBLE_BYTES + 1], payload_end - (RS485_PREAMBLE_BYTES + 1));
     if (received_crc != calculated_crc) {
-        fprintf(stderr, "CRC mismatch: received=0x%08X, calculated=0x%08X\n", received_crc, calculated_crc);
+        fprintf(stderr, "CRC mismatch: received=0x%08lX, calculated=0x%08lX\n", received_crc, calculated_crc);
         return -1;
     }
 

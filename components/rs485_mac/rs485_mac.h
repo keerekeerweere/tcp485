@@ -10,7 +10,7 @@
 #include "freertos/task.h"
 
 #define MAX_RETRIES            16
-#define SLOT_TIME_MS           51
+#define MAC_SLOT_TIME_MS       51
 #define INTER_FRAME_GAP_MS     5
 #define JAM_BITS              32
 

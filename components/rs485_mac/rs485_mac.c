@@ -1,5 +1,6 @@
 #include "rs485_mac.h"
 #include "esp_log.h"
+#include "esp_random.h"
 #include <string.h>
 
 static const char *TAG = "RS485_MAC";
@@ -40,7 +41,7 @@ uint32_t csma_cd_backoff_delay(uint8_t attempt)
     uint8_t k = (attempt < 10) ? attempt : 10;
     uint32_t max_slots = (1 << k) - 1;
     uint32_t random_slots = esp_random() % (max_slots + 1);
-    return random_slots * SLOT_TIME_MS;
+    return random_slots * MAC_SLOT_TIME_MS;
 }
 
 esp_err_t csma_cd_transmit(rs485_phy_t *phy, const uint8_t *frame, size_t len, csma_context_t *ctx)

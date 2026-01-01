@@ -4,20 +4,12 @@
 #include <math.h>
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
-#include <freertos/task.h"
+#include "freertos/task.h"
 
 static const char *TAG = "RS485_PHY";
 
-static const uint32_t DEFAULT_BAUD_RATE = 19200;
-static const uint32_t DEFAULT_DISTANCE_M = 100;
-
 static rs485_phy_t s_phy = {0};
 static rs485_timing_t s_timing = {0};
-
-static uint32_t rs485_calculate_bit_time_us(uint32_t baud_rate)
-{
-    return (uint32_t)(80000000ULL / baud_rate);
-}
 
 static void rs485_calculate_timing(uint32_t baud_rate, uint32_t distance_m, rs485_timing_t *timing)
 {
@@ -52,11 +44,7 @@ esp_err_t rs485_phy_init(rs485_phy_t *phy)
     s_phy.baud_rate = phy->baud_rate;
     s_phy.initialized = true;
     
-    ESP_ERROR_CHECK(uart_driver_install(phy->uart_num, RS485_UART_BUF_SIZE, RS485_UART_BUF_SIZE, RS485_UART_BUF_SIZE, 
-                                   RS485_UART_BUF_SIZE, 8, &s_phy.uart_num));
-    ESP_ERROR_CHECK(uart_param_config(phy->uart_num, &baud_config, &s_phy.uart_num));
-    
-    uart_config_t baud_config = {
+    uart_config_t uart_config = {
         .baud_rate = s_phy.baud_rate,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
@@ -64,8 +52,10 @@ esp_err_t rs485_phy_init(rs485_phy_t *phy)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_APB
     };
-    ESP_ERROR_CHECK(uart_set_pin(phy->uart_num, s_phy.tx_pin, s_phy.rx_pin, UART_PIN_NO_CHANGE, s_phy.uart_num));
-    ESP_ERROR_CHECK(uart_set_pin(phy->uart_num, s_phy.rts_pin, s_phy.rx_pin, UART_PIN_NO_CHANGE, s_phy.uart_num));
+    
+    ESP_ERROR_CHECK(uart_param_config(phy->uart_num, &uart_config));
+    ESP_ERROR_CHECK(uart_driver_install(phy->uart_num, RS485_UART_BUF_SIZE, RS485_UART_BUF_SIZE, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_set_pin(phy->uart_num, s_phy.tx_pin, s_phy.rx_pin, UART_PIN_NO_CHANGE, s_phy.rts_pin));
     
     ESP_LOGI(TAG, "RS485 PHY initialized: UART%d, TX=%d, RX=%d, RTS=%d, %d baud", 
              s_phy.uart_num, s_phy.tx_pin, s_phy.rx_pin, s_phy.rts_pin, s_phy.baud_rate);
